@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Calculator">
+<meta name="theme-color" content="#000000">
+<title>Calculator</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"SF Pro Display",system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;overflow:hidden;touch-action:manipulation}
+.app{height:100%;max-width:440px;margin:0 auto;display:flex;flex-direction:column;justify-content:flex-end;padding:16px 16px calc(28px + env(safe-area-inset-bottom))}
+#display{position:relative;text-align:right;font-weight:300;font-size:86px;line-height:1.15;padding:0 6px 14px;white-space:nowrap;overflow:hidden;min-height:112px;cursor:default}
+#dot{position:absolute;left:2px;top:2px;width:5px;height:5px;border-radius:50%;background:#fff;opacity:0;transition:opacity .2s}
+#dot.on{opacity:.3}
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.keys button{border:0;border-radius:999px;aspect-ratio:1;font:inherit;font-size:34px;color:#fff;background:#333;cursor:pointer;transition:filter .1s,background .25s,color .25s}
+.keys button:active{filter:brightness(1.7)}
+.keys .fn{background:#a5a5a5;color:#000;font-size:28px}
+.keys .op{background:#ff9f0a;font-size:40px}
+.keys .op.sel{background:#fff;color:#ff9f0a}
+.keys .zero{grid-column:span 2;aspect-ratio:auto;text-align:left;padding-left:13%}
+/* hidden settings */
+#sheet{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:16px;z-index:9}
+#sheet.open{display:flex}
+.card{background:#1c1c1e;border-radius:16px;padding:20px;width:100%;max-width:400px;font-size:15px;user-select:text;-webkit-user-select:text;max-height:100%;overflow:auto}
+.card h2{font-size:18px;margin-bottom:12px}
+.card label{display:block;margin:12px 0 4px;color:#aaa;font-size:13px}
+.card input[type=text],.card input[type=number]{width:100%;padding:10px;border-radius:8px;border:1px solid #444;background:#000;color:#fff;font-size:16px}
+.card .row{display:flex;align-items:center;gap:8px;margin-top:12px}
+.card .hint{color:#888;font-size:12px;margin-top:4px;line-height:1.4}
+.card .preview{margin-top:14px;padding:10px;background:#000;border-radius:8px;font-size:22px;text-align:right;font-variant-numeric:tabular-nums}
+.card .url{margin-top:6px;padding:8px;background:#000;border-radius:8px;font-size:12px;word-break:break-all;color:#ff9f0a}
+.card .btns{display:flex;gap:8px;margin-top:16px}
+.card .btns button{flex:1;padding:12px;border:0;border-radius:10px;font-size:16px;background:#333;color:#fff}
+.card .btns .primary{background:#ff9f0a}
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="display"><span id="dot"></span><span id="txt">0</span></div>
+  <div class="keys">
+    <button class="fn" data-k="ac" id="ac">AC</button>
+    <button class="fn" data-k="neg">+/−</button>
+    <button class="fn" data-k="pct">%</button>
+    <button class="op" data-k="÷">÷</button>
+    <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+    <button class="op" data-k="×">×</button>
+    <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+    <button class="op" data-k="−">−</button>
+    <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+    <button class="op" data-k="+">+</button>
+    <button class="zero" data-k="0">0</button>
+    <button data-k=".">.</button>
+    <button class="op" data-k="=">=</button>
+  </div>
+</div>
+
+<div id="sheet">
+  <div class="card">
+    <h2>Trick settings</h2>
+    <label for="s-fmt">Reveal format</label>
+    <input type="text" id="s-fmt" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="hint">Tokens: MM month, DD day, YY / YYYY year, hh 12-hour, HH 24-hour, mm minutes. Example: MMDDhhmm → 11031435 style.</div>
+    <label for="s-after">Auto-force after this many numbers</label>
+    <input type="number" id="s-after" min="1" max="20">
+    <div class="hint">After this many numbers have gone in, the next number typed after a + gets forced.</div>
+    <label for="s-offset">Minutes ahead</label>
+    <input type="number" id="s-offset" min="-60" max="120">
+    <div class="hint">Add minutes if the reveal happens a while after the last number goes in. Times past :40 seconds round up automatically.</div>
+    <div class="row"><input type="checkbox" id="s-auto"><label for="s-auto" style="margin:0;color:#fff">Auto-force (needed when the audience holds their own phone)</label></div>
+    <div class="preview" id="s-prev"></div>
+    <label>Link to write to the NFC tag (includes these settings)</label>
+    <div class="url" id="s-url"></div>
+    <div class="btns"><button id="s-copy">Copy link</button><button id="s-close" class="primary">Done</button></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ---------- config ----------
+  var DEF = {fmt:'MMDDhhmm', after:3, offset:0, auto:1};
+  var cfg = Object.assign({}, DEF);
+  try { Object.assign(cfg, JSON.parse(localStorage.getItem('calc-cfg') || '{}')); } catch(e){}
+  var P = new URLSearchParams(location.search);
+  Object.keys(DEF).forEach(function(k){ if (P.has(k)) cfg[k] = P.get(k); });
+  function norm(){ cfg.after = Math.max(1, parseInt(cfg.after,10) || DEF.after); cfg.offset = parseInt(cfg.offset,10) || 0; cfg.auto = String(cfg.auto) !== '0' && cfg.auto !== false; cfg.fmt = String(cfg.fmt || DEF.fmt); }
+  norm();
+
+  function targetString(){
+    var now = Date.now();
+    var extra = new Date(now).getSeconds() >= 40 ? 60000 : 0;
+    var d = new Date(now + cfg.offset*60000 + extra);
+    var p = function(n){ return String(n).padStart(2,'0'); };
+    var h12 = d.getHours() % 12 || 12;
+    var map = {YYYY:d.getFullYear(), YY:p(d.getFullYear()%100), MM:p(d.getMonth()+1), M:d.getMonth()+1,
+               DD:p(d.getDate()), D:d.getDate(), HH:p(d.getHours()), hh:p(h12), h:h12, mm:p(d.getMinutes())};
+    return cfg.fmt.replace(/YYYY|YY|MM|M|DD|D|HH|hh|h|mm/g, function(t){ return map[t]; }).replace(/\D/g,'');
+  }
+  function target(){ return Number(targetString()); }
+
+  // ---------- calculator state ----------
+  var acc = null, op = null, cur = '', count = 0, justEq = false;
+  var force = null, used = false, armed = false;
+
+  var txt = document.getElementById('txt'), disp = document.getElementById('display'), dot = document.getElementById('dot');
+
+  function apply(a,o,b){ switch(o){ case '+':return a+b; case '−':return a-b; case '×':return a*b; case '÷':return b===0?NaN:a/b; } return b; }
+  function show(x){
+    if (!isFinite(x)) return 'Error';
+    if (Math.abs(x) >= 1e15) return x.toExponential(6).replace('+','');
+    return String(parseFloat(x.toPrecision(12)));
+  }
+  function render(){
+    txt.textContent = cur !== '' ? cur : (acc !== null ? show(acc) : '0');
+    document.querySelectorAll('.op').forEach(function(b){ b.classList.toggle('sel', b.dataset.k === op && cur === ''); });
+    document.getElementById('ac').textContent = (cur !== '' || acc !== null) ? 'C' : 'AC';
+    dot.classList.toggle('on', armed);
+    fit();
+  }
+  function fit(){
+    var size = 86; txt.style.fontSize = size+'px';
+    while (txt.offsetWidth > disp.clientWidth - 14 && size > 24) { size -= 2; txt.style.fontSize = size+'px'; }
+  }
+
+  function shouldForce(){
+    return cur === '' && op && !used && (op === '+' || op === '−') && acc !== null &&
+           (armed || (cfg.auto && count >= cfg.after));
+  }
+  function digit(d){
+    if (force){
+      if (force.i < force.s.length) cur += force.s[force.i++];
+      render(); return;
+    }
+    if (shouldForce()){
+      var t = target();
+      var need = op === '+' ? t - acc : acc - t;
+      if (Number.isInteger(need) && need > 0){
+        force = {s:String(need), i:0}; used = true; armed = false;
+        return digit(d);
+      }
+    }
+    if (justEq){ acc = null; count = 0; justEq = false; }
+    if (d === '.'){ if (cur.indexOf('.') >= 0) return; if (cur === '' || cur === '-') cur += '0'; }
+    else if (cur === '0') cur = '';
+    else if (cur === '-0') cur = '-';
+    if (cur.replace(/[-.]/g,'').length >= 12) return;
+    cur += d; render();
+  }
+  function finishForce(){ if (force && force.i > 0 && force.i < force.s.length){ cur += force.s.slice(force.i); } force = null; }
+  function commit(){
+    if (cur === '' || cur === '-') { cur = ''; return; }
+    var v = parseFloat(cur);
+    acc = (acc === null || op === null) ? v : apply(acc, op, v);
+    count++; cur = ''; justEq = false;
+  }
+  function press(k){
+    if (/^[0-9.]$/.test(k)) return digit(k);
+    if (k === 'ac'){
+      if (cur !== '' && !force) { cur = ''; render(); return; }  // C clears entry
+      acc = null; op = null; cur = ''; count = 0; justEq = false; force = null; used = false; armed = false; render(); return;
+    }
+    if (force && (k === 'neg' || k === 'pct')) return;
+    if (k === 'neg'){ if (cur !== '') cur = cur[0] === '-' ? cur.slice(1) : '-' + cur; else if (acc !== null) acc = -acc; render(); return; }
+    if (k === 'pct'){ if (cur !== '') cur = show(parseFloat(cur)/100); else if (acc !== null) acc = acc/100; render(); return; }
+    finishForce();
+    if (k === '='){ commit(); op = null; justEq = true; render(); return; }
+    commit(); op = k; justEq = false; render();
+  }
+
+  document.querySelectorAll('.keys button').forEach(function(b){
+    b.addEventListener('click', function(){ press(b.dataset.k); });
+  });
+  document.addEventListener('keydown', function(e){
+    if (document.getElementById('sheet').classList.contains('open')) return;
+    var m = {'+':'+','-':'−','*':'×','x':'×','/':'÷','Enter':'=','=':'=','Escape':'ac','%':'pct'};
+    if (/^[0-9.]$/.test(e.key)) press(e.key); else if (m[e.key]) { e.preventDefault(); press(m[e.key]); }
+  });
+
+  // ---------- secret controls on the display ----------
+  // long-press (0.6 s) = arm the force manually (tiny dot top-left)
+  // triple-tap = open settings
+  var holdTimer = null, held = false, taps = 0, tapTimer = null;
+  disp.addEventListener('pointerdown', function(){
+    held = false;
+    holdTimer = setTimeout(function(){ held = true; armed = !armed; if (navigator.vibrate) navigator.vibrate(25); render(); }, 600);
+  });
+  ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ disp.addEventListener(ev, function(){ clearTimeout(holdTimer); }); });
+  disp.addEventListener('pointerup', function(){
+    if (held) return;
+    taps++; clearTimeout(tapTimer);
+    tapTimer = setTimeout(function(){ taps = 0; }, 500);
+    if (taps >= 3){ taps = 0; openSheet(); }
+  });
+
+  // ---------- settings sheet ----------
+  var sheet = document.getElementById('sheet');
+  var f = {fmt:document.getElementById('s-fmt'), after:document.getElementById('s-after'), offset:document.getElementById('s-offset'), auto:document.getElementById('s-auto')};
+  var prevTimer = null;
+  function readSheet(){ cfg.fmt = f.fmt.value || DEF.fmt; cfg.after = f.after.value; cfg.offset = f.offset.value; cfg.auto = f.auto.checked; norm(); }
+  function link(){ var q = new URLSearchParams({fmt:cfg.fmt, after:cfg.after, offset:cfg.offset, auto:cfg.auto?1:0}); return location.origin + location.pathname + '?' + q.toString(); }
+  function updSheet(){ document.getElementById('s-prev').textContent = targetString(); document.getElementById('s-url').textContent = link(); }
+  function openSheet(){
+    f.fmt.value = cfg.fmt; f.after.value = cfg.after; f.offset.value = cfg.offset; f.auto.checked = cfg.auto;
+    updSheet(); sheet.classList.add('open'); prevTimer = setInterval(updSheet, 1000);
+  }
+  Object.keys(f).forEach(function(k){ f[k].addEventListener('input', function(){ readSheet(); updSheet(); }); });
+  document.getElementById('s-close').addEventListener('click', function(){
+    readSheet();
+    try { localStorage.setItem('calc-cfg', JSON.stringify(cfg)); } catch(e){}
+    clearInterval(prevTimer); sheet.classList.remove('open');
+  });
+  document.getElementById('s-copy').addEventListener('click', function(){
+    var b = this; try { navigator.clipboard.writeText(link()).then(function(){ b.textContent = 'Copied'; setTimeout(function(){ b.textContent = 'Copy link'; }, 1200); }); } catch(e){}
+  });
+
+  window.addEventListener('resize', fit);
+  render();
+})();
+</script>
+</body>
+</html>
