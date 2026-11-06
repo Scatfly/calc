@@ -248,7 +248,15 @@ html.standalone,html.standalone body{overflow:hidden;min-height:0;overscroll-beh
     render();
   }
   function allClear(){ tokens = []; cur = ''; count = 0; justEq = false; result = null; force = null; used = false; armed = false; }
+  // After the reveal, the dot closes the tab (allowed because a tab opened from the
+  // NFC tag has only this one page in its history). If the browser refuses,
+  // wipe the calculator back to 0 so the forced numbers aren't left on screen.
+  function closeTab(){
+    try { window.close(); } catch(e){}
+    setTimeout(function(){ prev = ''; allClear(); render(); }, 250);
+  }
   function press(k){
+    if (k === '.' && justEq && used) return closeTab();
     if (/^[0-9.]$/.test(k)) return digit(k);
     if (k === 'mode' || k === 'hist') return;
     if (k === 'back') return backspace();
