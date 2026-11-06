@@ -5,27 +5,40 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Calculator">
 <meta name="theme-color" content="#000000">
+<meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
 <title>Calculator</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"SF Pro Display",system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;overflow:hidden;touch-action:manipulation}
-.app{height:100%;max-width:440px;margin:0 auto;display:flex;flex-direction:column;justify-content:flex-end;padding:16px 16px calc(28px + env(safe-area-inset-bottom))}
-#display{position:relative;text-align:right;font-weight:300;font-size:86px;line-height:1.15;padding:0 6px 14px;white-space:nowrap;overflow:hidden;min-height:112px;cursor:default}
-#dot{position:absolute;left:2px;top:2px;width:5px;height:5px;border-radius:50%;background:#fff;opacity:0;transition:opacity .2s}
+html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"SF Pro Display","SF Pro",system-ui,"Helvetica Neue",Helvetica,Arial,sans-serif;overflow:hidden;touch-action:manipulation;overscroll-behavior:none}
+.app{height:100%;max-width:440px;margin:0 auto;display:flex;flex-direction:column;justify-content:flex-end;
+  padding:env(safe-area-inset-top) 18px calc(env(safe-area-inset-bottom) + 34px)}
+#display{position:relative;text-align:right;padding:0 8px 18px;cursor:default}
+#expr{color:#8e8e93;font-size:28px;font-weight:400;height:36px;line-height:36px;white-space:nowrap;overflow:hidden;text-overflow:clip;direction:rtl;letter-spacing:.2px}
+#expr span{direction:ltr;unicode-bidi:embed}
+#num{font-size:84px;font-weight:300;line-height:1.08;white-space:nowrap;letter-spacing:-1px;font-variant-numeric:tabular-nums;min-height:92px}
+#dot{position:absolute;left:0;top:0;width:5px;height:5px;border-radius:50%;background:#fff;opacity:0;transition:opacity .2s}
 #dot.on{opacity:.3}
 .keys{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-.keys button{border:0;border-radius:999px;aspect-ratio:1;font:inherit;font-size:34px;color:#fff;background:#333;cursor:pointer;transition:filter .1s,background .25s,color .25s}
-.keys button:active{filter:brightness(1.7)}
-.keys .fn{background:#a5a5a5;color:#000;font-size:28px}
-.keys .op{background:#ff9f0a;font-size:40px}
-.keys .op.sel{background:#fff;color:#ff9f0a}
-.keys .zero{grid-column:span 2;aspect-ratio:auto;text-align:left;padding-left:13%}
+.keys button{position:relative;border:0;border-radius:50%;aspect-ratio:1;font:inherit;font-size:36px;font-weight:400;color:#fff;
+  background:#333335;cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10), inset 0 -1px 0 rgba(0,0,0,.25);
+  transition:filter .35s ease}
+/* soft glassy sheen */
+.keys button::before{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.09) 0%,rgba(255,255,255,0) 55%)}
+.keys button:active{filter:brightness(1.55);transition:none}
+.keys .fn{background:#5c5c5f;font-size:30px}
+.keys .op{background:#ff9f0a;font-size:42px}
+.keys .op.sel{background:#fcc78d}
+.keys svg{width:36px;height:36px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.keys .op svg{width:34px;height:34px;stroke-width:2.6}
+.keys .mode svg{width:30px;height:30px;stroke-width:2}
 /* hidden settings */
 #sheet{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:16px;z-index:9}
 #sheet.open{display:flex}
@@ -44,21 +57,24 @@ html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"SF P
 </head>
 <body>
 <div class="app">
-  <div id="display"><span id="dot"></span><span id="txt">0</span></div>
+  <div id="display"><span id="dot"></span><div id="expr"><span id="exprTxt"></span></div><div id="num">0</div></div>
   <div class="keys">
-    <button class="fn" data-k="ac" id="ac">AC</button>
-    <button class="fn" data-k="neg">+/−</button>
-    <button class="fn" data-k="pct">%</button>
-    <button class="op" data-k="÷">÷</button>
+    <button class="fn" data-k="ac" id="ac" aria-label="All clear">AC</button>
+    <button class="fn" data-k="neg" aria-label="Plus minus" style="font-size:27px;letter-spacing:-1px">+/−</button>
+    <button class="fn" data-k="pct" aria-label="Percent">%</button>
+    <button class="op" data-k="÷" aria-label="Divide">÷</button>
     <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
-    <button class="op" data-k="×">×</button>
+    <button class="op" data-k="×" aria-label="Multiply">×</button>
     <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
-    <button class="op" data-k="−">−</button>
+    <button class="op" data-k="−" aria-label="Subtract">−</button>
     <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
-    <button class="op" data-k="+">+</button>
-    <button class="zero" data-k="0">0</button>
+    <button class="op" data-k="+" aria-label="Add">+</button>
+    <button class="mode" data-k="mode" aria-label="Calculator">
+      <svg viewBox="0 0 30 30"><rect x="5" y="3" width="20" height="24" rx="4"/><path d="M9.5 8.5h11M10 15h2M15 15h0M18 15h2M10 20.5h2M18 20.5h2"/><path d="M15 14v2M15 19.5v2" opacity=".0"/></svg>
+    </button>
+    <button data-k="0">0</button>
     <button data-k=".">.</button>
-    <button class="op" data-k="=">=</button>
+    <button class="op" data-k="=" aria-label="Equals">=</button>
   </div>
 </div>
 
@@ -107,9 +123,13 @@ html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"SF P
 
   // ---------- calculator state ----------
   var acc = null, op = null, cur = '', count = 0, justEq = false;
+  var expr = '';            // the gray expression line, e.g. "37×12+"
   var force = null, used = false, armed = false;
+  var MAXDIGITS = 9;        // like the real portrait calculator
 
-  var txt = document.getElementById('txt'), disp = document.getElementById('display'), dot = document.getElementById('dot');
+  var numEl = document.getElementById('num'), exprEl = document.getElementById('exprTxt');
+  var disp = document.getElementById('display'), dot = document.getElementById('dot'), acBtn = document.getElementById('ac');
+  var BACK = '<svg viewBox="0 0 36 36"><path d="M13 9h15a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H13l-8-9z"/><path d="M16.5 14l7 8M23.5 14l-7 8"/></svg>';
 
   function apply(a,o,b){ switch(o){ case '+':return a+b; case '−':return a-b; case '×':return a*b; case '÷':return b===0?NaN:a/b; } return b; }
   function show(x){
@@ -117,16 +137,22 @@ html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"SF P
     if (Math.abs(x) >= 1e15) return x.toExponential(6).replace('+','');
     return String(parseFloat(x.toPrecision(12)));
   }
+  function pretty(s){ return s.replace(/^-/, '−'); }
   function render(){
-    txt.textContent = cur !== '' ? cur : (acc !== null ? show(acc) : '0');
-    document.querySelectorAll('.op').forEach(function(b){ b.classList.toggle('sel', b.dataset.k === op && cur === ''); });
-    document.getElementById('ac').textContent = (cur !== '' || acc !== null) ? 'C' : 'AC';
+    numEl.textContent = pretty(cur !== '' ? cur : (acc !== null ? show(acc) : '0'));
+    exprEl.textContent = expr + (justEq ? '' : pretty(cur));
+    if (justEq || (expr === '' && cur === '')) exprEl.textContent = expr;
+    document.querySelectorAll('.op').forEach(function(b){ b.classList.toggle('sel', b.dataset.k === op && cur === '' && !justEq); });
+    var typing = cur !== '' && !justEq;
+    if (typing) { if (acBtn.dataset.mode !== 'back') { acBtn.innerHTML = BACK; acBtn.dataset.mode = 'back'; acBtn.setAttribute('aria-label','Delete'); } }
+    else if (acBtn.dataset.mode !== 'ac') { acBtn.textContent = 'AC'; acBtn.dataset.mode = 'ac'; acBtn.setAttribute('aria-label','All clear'); }
     dot.classList.toggle('on', armed);
     fit();
   }
   function fit(){
-    var size = 86; txt.style.fontSize = size+'px';
-    while (txt.offsetWidth > disp.clientWidth - 14 && size > 24) { size -= 2; txt.style.fontSize = size+'px'; }
+    var size = 84; numEl.style.fontSize = size+'px';
+    var max = disp.clientWidth - 16;
+    while (numEl.scrollWidth > max && size > 30) { size -= 2; numEl.style.fontSize = size+'px'; }
   }
 
   function shouldForce(){
@@ -146,32 +172,58 @@ html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"SF P
         return digit(d);
       }
     }
-    if (justEq){ acc = null; count = 0; justEq = false; }
+    if (justEq){ acc = null; op = null; count = 0; justEq = false; expr = ''; }
     if (d === '.'){ if (cur.indexOf('.') >= 0) return; if (cur === '' || cur === '-') cur += '0'; }
     else if (cur === '0') cur = '';
     else if (cur === '-0') cur = '-';
-    if (cur.replace(/[-.]/g,'').length >= 12) return;
+    if (cur.replace(/[-.]/g,'').length >= MAXDIGITS) return;
     cur += d; render();
+  }
+  function backspace(){
+    if (cur === '') return;
+    if (force){
+      if (force.i > 0){ force.i--; cur = cur.slice(0,-1); }
+      if (force.i === 0){ force = null; used = false; }   // fully deleted: allow the force again
+    } else {
+      cur = cur.slice(0,-1);
+      if (cur === '-') cur = '';
+    }
+    render();
   }
   function finishForce(){ if (force && force.i > 0 && force.i < force.s.length){ cur += force.s.slice(force.i); } force = null; }
   function commit(){
-    if (cur === '' || cur === '-') { cur = ''; return; }
+    if (cur === '' || cur === '-') { cur = ''; return false; }
     var v = parseFloat(cur);
     acc = (acc === null || op === null) ? v : apply(acc, op, v);
     count++; cur = ''; justEq = false;
+    return true;
   }
+  function allClear(){ acc = null; op = null; cur = ''; count = 0; justEq = false; expr = ''; force = null; used = false; armed = false; }
   function press(k){
     if (/^[0-9.]$/.test(k)) return digit(k);
+    if (k === 'mode') return;
     if (k === 'ac'){
-      if (cur !== '' && !force) { cur = ''; render(); return; }  // C clears entry
-      acc = null; op = null; cur = ''; count = 0; justEq = false; force = null; used = false; armed = false; render(); return;
+      if (acBtn.dataset.mode === 'back') return backspace();
+      allClear(); render(); return;
     }
     if (force && (k === 'neg' || k === 'pct')) return;
-    if (k === 'neg'){ if (cur !== '') cur = cur[0] === '-' ? cur.slice(1) : '-' + cur; else if (acc !== null) acc = -acc; render(); return; }
+    if (k === 'neg'){ if (cur !== '') cur = cur[0] === '-' ? cur.slice(1) : '-' + cur; else if (acc !== null) { acc = -acc; if (justEq) expr = ''; } render(); return; }
     if (k === 'pct'){ if (cur !== '') cur = show(parseFloat(cur)/100); else if (acc !== null) acc = acc/100; render(); return; }
     finishForce();
-    if (k === '='){ commit(); op = null; justEq = true; render(); return; }
-    commit(); op = k; justEq = false; render();
+    if (k === '='){
+      if (op === null && cur === '') return;
+      var entry = cur;
+      if (commit()) expr += pretty(entry);
+      else if (/[+−×÷]$/.test(expr)) expr = expr.slice(0,-1);
+      op = null; justEq = true; render(); return;
+    }
+    // operator
+    var entry2 = cur;
+    if (justEq){ expr = pretty(show(acc)); justEq = false; }
+    if (commit()) expr += pretty(entry2);
+    else if (acc === null){ acc = 0; expr = '0'; }
+    if (/[+−×÷]$/.test(expr)) expr = expr.slice(0,-1);
+    op = k; expr += k; render();
   }
 
   document.querySelectorAll('.keys button').forEach(function(b){
@@ -179,7 +231,7 @@ html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"SF P
   });
   document.addEventListener('keydown', function(e){
     if (document.getElementById('sheet').classList.contains('open')) return;
-    var m = {'+':'+','-':'−','*':'×','x':'×','/':'÷','Enter':'=','=':'=','Escape':'ac','%':'pct'};
+    var m = {'+':'+','-':'−','*':'×','x':'×','/':'÷','Enter':'=','=':'=','Escape':'ac','Backspace':'ac','%':'pct'};
     if (/^[0-9.]$/.test(e.key)) press(e.key); else if (m[e.key]) { e.preventDefault(); press(m[e.key]); }
   });
 
