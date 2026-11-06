@@ -15,8 +15,12 @@
 <title>Calculator</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"SF Pro Display","SF Pro",system-ui,"Helvetica Neue",Helvetica,Arial,sans-serif;overflow:hidden;touch-action:manipulation;overscroll-behavior:none}
-.app{height:100%;max-width:440px;margin:0 auto;display:flex;flex-direction:column;justify-content:flex-end;
+html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"SF Pro Display","SF Pro",system-ui,"Helvetica Neue",Helvetica,Arial,sans-serif;touch-action:manipulation}
+/* page is a little taller than the screen so one swipe up shrinks the browser bars;
+   the calculator itself stays pinned to the screen */
+body{min-height:calc(100% + 160px)}
+html.standalone,html.standalone body{overflow:hidden;min-height:0;overscroll-behavior:none}
+.app{position:fixed;left:0;right:0;bottom:0;height:100%;max-width:440px;margin:0 auto;display:flex;flex-direction:column;justify-content:flex-end;
   padding:env(safe-area-inset-top) 18px calc(env(safe-area-inset-bottom) + 34px)}
 #display{position:relative;text-align:right;padding:0 8px 18px;cursor:default}
 #expr{color:#8e8e93;font-size:28px;font-weight:400;height:36px;line-height:36px;white-space:nowrap;overflow:hidden;text-overflow:clip;direction:rtl;letter-spacing:.2px}
@@ -300,6 +304,7 @@ html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"SF P
   // When opened as a normal web page (not an installed app), go full-screen
   // on the first touch where the browser allows it (Android Chrome does; iPhone Safari doesn't).
   var standalone = window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || navigator.standalone;
+  if (standalone) document.documentElement.classList.add('standalone');
   if (!standalone) {
     var goFull = function(){
       var el = document.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen;
