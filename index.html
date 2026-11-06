@@ -8,6 +8,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Calculator">
 <meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
 <title>Calculator</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
@@ -216,6 +219,17 @@ html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"SF P
   document.getElementById('s-copy').addEventListener('click', function(){
     var b = this; try { navigator.clipboard.writeText(link()).then(function(){ b.textContent = 'Copied'; setTimeout(function(){ b.textContent = 'Copy link'; }, 1200); }); } catch(e){}
   });
+
+  // When opened as a normal web page (not an installed app), go full-screen
+  // on the first touch where the browser allows it (Android Chrome does; iPhone Safari doesn't).
+  var standalone = window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || navigator.standalone;
+  if (!standalone) {
+    var goFull = function(){
+      var el = document.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (req && !document.fullscreenElement) { try { var p = req.call(el, {navigationUI:'hide'}); if (p && p.catch) p.catch(function(){}); } catch(e){} }
+    };
+    document.addEventListener('pointerdown', goFull, {once:true, capture:true});
+  }
 
   window.addEventListener('resize', fit);
   render();
