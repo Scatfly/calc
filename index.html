@@ -35,7 +35,6 @@ html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"SF P
 .keys button:active{filter:brightness(1.55);transition:none}
 .keys .fn{background:#5c5c5f;font-size:30px}
 .keys .op{background:#ff9f0a;font-size:42px}
-.keys .op.sel{background:#fcc78d}
 .keys svg{width:36px;height:36px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .keys .op svg{width:34px;height:34px;stroke-width:2.6}
 .keys .mode svg{width:30px;height:30px;stroke-width:2}
@@ -122,8 +121,9 @@ html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"SF P
   function target(){ return Number(targetString()); }
 
   // ---------- calculator state ----------
-  var acc = null, op = null, cur = '', count = 0, justEq = false;
-  var expr = '';            // the gray expression line, e.g. "37×12+"
+  // tokens = the sum being typed, as strings: ['37','×','12','+']
+  var tokens = [], cur = '', count = 0, justEq = false, result = null;
+  var prev = '';            // gray line: the previous equation
   var force = null, used = false, armed = false;
   var MAXDIGITS = 9;        // like the real portrait calculator
 
@@ -131,19 +131,34 @@ html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"SF P
   var disp = document.getElementById('display'), dot = document.getElementById('dot'), acBtn = document.getElementById('ac');
   var BACK = '<svg viewBox="0 0 36 36"><path d="M13 9h15a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H13l-8-9z"/><path d="M16.5 14l7 8M23.5 14l-7 8"/></svg>';
 
-  function apply(a,o,b){ switch(o){ case '+':return a+b; case '−':return a-b; case '×':return a*b; case '÷':return b===0?NaN:a/b; } return b; }
+  function isOp(t){ return /^[+−×÷]$/.test(t); }
+  function lastOp(){ var t = tokens[tokens.length-1]; return tokens.length && isOp(t) ? t : null; }
   function show(x){
     if (!isFinite(x)) return 'Error';
     if (Math.abs(x) >= 1e15) return x.toExponential(6).replace('+','');
     return String(parseFloat(x.toPrecision(12)));
   }
-  function pretty(s){ return s.replace(/^-/, '−'); }
+  function pretty(s){ return String(s).replace(/^-/, '−'); }
+  function exprText(list){ return list.map(function(t){ return isOp(t) ? t : pretty(t); }).join(''); }
+  // × and ÷ before + and −, like the real calculator
+  function evaluate(list){
+    var terms = [parseFloat(list[0])], ops = [];
+    for (var i = 1; i + 1 < list.length; i += 2){
+      var o = list[i], v = parseFloat(list[i+1]), L = terms.length - 1;
+      if (o === '×') terms[L] *= v;
+      else if (o === '÷') terms[L] = v === 0 ? NaN : terms[L] / v;
+      else { ops.push(o); terms.push(v); }
+    }
+    var r = terms[0];
+    for (var j = 0; j < ops.length; j++) r = ops[j] === '+' ? r + terms[j+1] : r - terms[j+1];
+    return r;
+  }
   function render(){
-    numEl.textContent = pretty(cur !== '' ? cur : (acc !== null ? show(acc) : '0'));
-    exprEl.textContent = expr + (justEq ? '' : pretty(cur));
-    if (justEq || (expr === '' && cur === '')) exprEl.textContent = expr;
-    document.querySelectorAll('.op').forEach(function(b){ b.classList.toggle('sel', b.dataset.k === op && cur === '' && !justEq); });
-    var typing = cur !== '' && !justEq;
+    if (justEq) numEl.textContent = pretty(show(result));
+    else if (!tokens.length && cur === '') numEl.textContent = '0';
+    else numEl.textContent = exprText(tokens) + pretty(cur);
+    exprEl.textContent = prev;
+    var typing = !justEq && (tokens.length || cur !== '');
     if (typing) { if (acBtn.dataset.mode !== 'back') { acBtn.innerHTML = BACK; acBtn.dataset.mode = 'back'; acBtn.setAttribute('aria-label','Delete'); } }
     else if (acBtn.dataset.mode !== 'ac') { acBtn.textContent = 'AC'; acBtn.dataset.mode = 'ac'; acBtn.setAttribute('aria-label','All clear'); }
     dot.classList.toggle('on', armed);
@@ -152,78 +167,88 @@ html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"SF P
   function fit(){
     var size = 84; numEl.style.fontSize = size+'px';
     var max = disp.clientWidth - 16;
-    while (numEl.scrollWidth > max && size > 30) { size -= 2; numEl.style.fontSize = size+'px'; }
+    while (numEl.scrollWidth > max && size > 26) { size -= 2; numEl.style.fontSize = size+'px'; }
   }
 
   function shouldForce(){
-    return cur === '' && op && !used && (op === '+' || op === '−') && acc !== null &&
-           (armed || (cfg.auto && count >= cfg.after));
+    var o = lastOp();
+    return cur === '' && !used && (o === '+' || o === '−') && (armed || (cfg.auto && count >= cfg.after));
   }
   function digit(d){
     if (force){
       if (force.i < force.s.length) cur += force.s[force.i++];
       render(); return;
     }
+    if (justEq){ tokens = []; count = 0; justEq = false; }
     if (shouldForce()){
-      var t = target();
-      var need = op === '+' ? t - acc : acc - t;
+      var t = target(), value = evaluate(tokens.slice(0,-1));
+      var need = lastOp() === '+' ? t - value : value - t;
       if (Number.isInteger(need) && need > 0){
         force = {s:String(need), i:0}; used = true; armed = false;
         return digit(d);
       }
     }
-    if (justEq){ acc = null; op = null; count = 0; justEq = false; expr = ''; }
     if (d === '.'){ if (cur.indexOf('.') >= 0) return; if (cur === '' || cur === '-') cur += '0'; }
     else if (cur === '0') cur = '';
     else if (cur === '-0') cur = '-';
     if (cur.replace(/[-.]/g,'').length >= MAXDIGITS) return;
     cur += d; render();
   }
+  function finishForce(){ if (force && force.i > 0 && force.i < force.s.length){ cur += force.s.slice(force.i); } force = null; }
+  function commitCur(){
+    if (cur === '' || cur === '-') { cur = ''; return false; }
+    tokens.push(cur); count++; cur = '';
+    return true;
+  }
+  function operator(k){
+    finishForce();
+    if (justEq){ tokens = [isFinite(result) ? show(result) : '0']; count = 1; justEq = false; cur = ''; }
+    if (!commitCur()){
+      if (lastOp()){ tokens[tokens.length-1] = k; render(); return; }  // swap the operator
+      if (!tokens.length) tokens = ['0'];
+    }
+    tokens.push(k); render();
+  }
+  function equals(){
+    finishForce();
+    if (justEq) return;
+    commitCur();
+    if (lastOp()) tokens.pop();
+    if (!tokens.length) return;
+    result = evaluate(tokens);
+    prev = exprText(tokens);
+    justEq = true; render();
+  }
   function backspace(){
-    if (cur === '') return;
-    if (force){
-      if (force.i > 0){ force.i--; cur = cur.slice(0,-1); }
-      if (force.i === 0){ force = null; used = false; }   // fully deleted: allow the force again
-    } else {
-      cur = cur.slice(0,-1);
-      if (cur === '-') cur = '';
+    if (justEq) return;
+    if (cur !== ''){
+      if (force){
+        if (force.i > 0){ force.i--; cur = cur.slice(0,-1); }
+        if (force.i === 0){ force = null; used = false; }   // fully deleted: allow the force again
+      } else {
+        cur = cur.slice(0,-1);
+        if (cur === '-') cur = '';
+      }
+    } else if (tokens.length){
+      if (lastOp()) tokens.pop();
+      if (tokens.length){ cur = tokens.pop(); count--; }   // back to editing the previous number
     }
     render();
   }
-  function finishForce(){ if (force && force.i > 0 && force.i < force.s.length){ cur += force.s.slice(force.i); } force = null; }
-  function commit(){
-    if (cur === '' || cur === '-') { cur = ''; return false; }
-    var v = parseFloat(cur);
-    acc = (acc === null || op === null) ? v : apply(acc, op, v);
-    count++; cur = ''; justEq = false;
-    return true;
-  }
-  function allClear(){ acc = null; op = null; cur = ''; count = 0; justEq = false; expr = ''; force = null; used = false; armed = false; }
+  function allClear(){ tokens = []; cur = ''; count = 0; justEq = false; result = null; force = null; used = false; armed = false; }
   function press(k){
     if (/^[0-9.]$/.test(k)) return digit(k);
     if (k === 'mode') return;
     if (k === 'ac'){
       if (acBtn.dataset.mode === 'back') return backspace();
+      if (!justEq && !tokens.length && cur === '') prev = '';   // second AC also clears the gray line
       allClear(); render(); return;
     }
     if (force && (k === 'neg' || k === 'pct')) return;
-    if (k === 'neg'){ if (cur !== '') cur = cur[0] === '-' ? cur.slice(1) : '-' + cur; else if (acc !== null) { acc = -acc; if (justEq) expr = ''; } render(); return; }
-    if (k === 'pct'){ if (cur !== '') cur = show(parseFloat(cur)/100); else if (acc !== null) acc = acc/100; render(); return; }
-    finishForce();
-    if (k === '='){
-      if (op === null && cur === '') return;
-      var entry = cur;
-      if (commit()) expr += pretty(entry);
-      else if (/[+−×÷]$/.test(expr)) expr = expr.slice(0,-1);
-      op = null; justEq = true; render(); return;
-    }
-    // operator
-    var entry2 = cur;
-    if (justEq){ expr = pretty(show(acc)); justEq = false; }
-    if (commit()) expr += pretty(entry2);
-    else if (acc === null){ acc = 0; expr = '0'; }
-    if (/[+−×÷]$/.test(expr)) expr = expr.slice(0,-1);
-    op = k; expr += k; render();
+    if (k === 'neg'){ if (justEq) result = -result; else if (cur !== '') cur = cur[0] === '-' ? cur.slice(1) : '-' + cur; render(); return; }
+    if (k === 'pct'){ if (justEq) result = result/100; else if (cur !== '') cur = show(parseFloat(cur)/100); render(); return; }
+    if (k === '=') return equals();
+    operator(k);
   }
 
   document.querySelectorAll('.keys button').forEach(function(b){
