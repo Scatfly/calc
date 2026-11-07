@@ -255,8 +255,13 @@ html.standalone,html.standalone body{overflow:hidden;min-height:0;overscroll-beh
     try { window.close(); } catch(e){}
     setTimeout(function(){ prev = ''; allClear(); render(); }, 250);
   }
+  var lastDot = 0;          // double-tap the dot (within 0.45 s) = close the tab
   function press(k){
-    if (k === '.' && justEq && used) return closeTab();
+    if (k === '.'){
+      var now = Date.now();
+      if (now - lastDot < 450){ lastDot = 0; return closeTab(); }
+      lastDot = now;
+    }
     if (/^[0-9.]$/.test(k)) return digit(k);
     if (k === 'mode' || k === 'hist') return;
     if (k === 'back') return backspace();
